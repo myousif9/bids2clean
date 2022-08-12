@@ -1,0 +1,23 @@
+{
+    "Name": "bids2clean - Bids app for preprocessing raw bids dataset",
+    "BIDSVersion": "1.4.0",
+    "DatasetType": "derivative",
+    "PipelineDescription":
+        {
+            "Name": "bids2clean",
+            "Version": "0.1.0",
+            "CodeURL": "http://github.com/myousif9/bids2clean",
+            "Author": "Mohamed Yousif",
+            "AuthorEmail": "myousif9@uwo.ca"
+        },
+    "GeneratedBy": [
+        {
+            "Name": "bids2clean",
+            "Version": "0.1.0",
+            "CodeURL": "http://github.com/myousif9/bids2clean",
+            "Author": "Mohamed Yousif",
+            "AuthorEmail": "myousif9@uwo.ca"
+ 
+        }
+    ]
+}
