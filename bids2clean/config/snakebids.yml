@@ -86,18 +86,25 @@ parse_args:
     help: Path to gradient correction coefficient file.
     required: True
     nargs: 1
+  
+  --fs_license:
+    help: Path to freesurfer license.
+    required: True
+    nargs: 1
 
-  --pipeline_modules:
-    help: Select the module to include in this pipeline
-    default: gradcorrect mp2rage_correction gen_t1w qsm_sstv mriqc
-    choices:
-      - gradcorrect
-      - mp2rage_correction
-      - gen_t1w
-      - qsm_sstv
-      - mriqc
-    required: False
-    nargs: '+'
+  # --pipeline_modules:
+  #   help: Select the module to include in this pipeline
+  #   default: gradcorrect mp2rage_correction gen_t1w qsm_sstv mriqc
+  #   choices:
+  #     - gradcorrect
+  #     - mp2rage_correction
+  #     - presurfer
+  #     - fastsurfer
+  #     - fmriprep
+  #     - qsm_sstv
+  #     - mriqc
+  #   required: False
+  #   nargs: '+'
 
 #--- workflow specific configuration -- below is just an example:
 
@@ -105,10 +112,16 @@ parse_args:
 #singularity containers
 singularity:
   gradcorrect:  '/scratch/myousif9/containers/gradcorrect_v0.0.3a.sif'
-  # gradcorrect: 'docker://khanlab/gradcorrect:v0.0.3a'
   mp2rage_correction: '/scratch/myousif9/containers/mp2rage_correction_v0.0.5a.sif'
-  # mp2rage_correction: 'docker://khanlab/mp2rage_correction:v0.0.5a'
   synthstrip: '/scratch/myousif9/containers/synthstrip.1.1.sif'
+  fastsurfer: '/scratch/myousif9/containers/fastsurfer_cpu-v1.1.0.sif'
+  spm: '/scratch/myousif9/containers/spm-min_12.sif' 
+  fmriprep: '/scratch/myousif9/containers/fmriprep_22.0.0.sif'
+  aslprep: '/scratch/myousif9/containers/aslprep_0.2.8.sif'
+  # hippunfold: 'docker://khanlab/hippunfold:v1.1.0'
+  # aslprep: 'docker://pennlinc/aslprep:0.2.8'
+  # gradcorrect: 'docker://khanlab/gradcorrect:v0.0.3a'
+  # mp2rage_correction: 'docker://khanlab/mp2rage_correction:v0.0.5a'
   # synthstrip: 'docker://freesurfer/synthstrip:1.1'
   # qsm_sstv: 'docker://akuurstr/qsm_sstv:v2.0.0'
   # mriqc : 'docker://poldracklab/mriqc:0.16.1'

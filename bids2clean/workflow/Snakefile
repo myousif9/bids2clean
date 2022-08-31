@@ -4,7 +4,7 @@ import snakebids
 from snakebids import bids
 
 from pathlib import Path
-from scripts.mp2rage_genUniDen.mp2rage_genUniDen import mp2rage_genUniDen
+# from scripts.mp2rage_genUniDen.mp2rage_genUniDen import mp2rage_genUniDen
 from os.path import join
 
 configfile: workflow.source_path('../config/snakebids.yml')
@@ -41,16 +41,15 @@ rule grad_correction:
     output: 
         done = bids(
             root='work',
-            datatype='gradcorrect',
             suffix = 'gradcorr.done',
             **inputs.subj_wildcards
             )
     container: config['singularity']['gradcorrect']
-    group: 'subj'
+    group: 'subj1'
     threads: 8
     resources:
         mem_mb = 16000,
-        time = 180
+        time = 1440
     log: bids(root='logs',suffix='gradcorrect.log',**inputs.subj_wildcards)
     shell:
         """
@@ -74,16 +73,15 @@ rule mp2rage_correction:
     output:
         done = bids(
             root = 'work',
-            datatype = 'mp2rage_correction',
             suffix = 'mp2rage_corr.done',
             **inputs.subj_wildcards
         ),
     container: config['singularity']['mp2rage_correction']
-    group: 'subj'
+    group: 'subj1'
     threads: 8
     resources:
         mem_mb = 16000,
-        time = 180
+        time = 1440
     log: bids(root='logs',suffix='mp2ragecorr.log',**inputs.subj_wildcards)
     shell:
         """
@@ -163,7 +161,7 @@ rule synthstrip:
             root = 'derivatives/synthstrip',
             datatype = 'anat',
             acq = 'genUNIDEN',
-            desc = 'sythstrip',
+            desc = 'synthstrip',
             suffix = 'T1w.nii.gz',
             **inputs.subj_wildcards
         ),
@@ -171,11 +169,11 @@ rule synthstrip:
             root = 'derivatives/synthstrip',
             datatype = 'anat',
             acq = 'genUNIDEN',
-            desc = 'brainmask',
-            suffix = 'T1w.nii.gz',
+            space = 'T1w',
+            suffix = 'brainmask.nii.gz',
             **inputs.subj_wildcards
         )
-    group: 'subj'
+    group: 'subj1'
     threads: 8
     resources:
         mem_mb = 16000,
@@ -188,18 +186,206 @@ rule synthstrip:
         python {params.synthstrip_script} {params.container_path} -i $t1w_path -o {output.skstrip} -m {output.mask} &> {log}
         """ 
 
-
-# rule mri_qc:
+# rule presurfer:
 #     input: 
-#         mp2rage_correction_dir = bids(
-#             root = 'results',
-
-#         )
 #     output:
-#     container:config['singularity']['mri_qc'] 
+#     container: config['singularity']['spm']
+#     group: 'subj'
+#     threads: 8
+#     resources:
+#         mem_mb: 16000
+#         time: 180
+#     log:  
 #     shell: 
 #         """
         
+#         """
+# rule freesurfer:
+#     input: 
+#         t1w_skstrip = rules.synthstrip.output.skstrip,
+#         fs_license = config ['fs_license']
+#     params:
+#         fsdir = bids(
+#             root = 'derivatives',
+#             suffix = 'freesurfer'
+#         ),
+#     output:
+#         done = bids(
+#             root = 'work',
+#             suffix = 'freesurfer.done',
+#             **inputs.subj_wildcards
+#         ),
+#     container: config['singularity']['freesurfer']
+#     group: 'subj'
+#     threads: 8
+#     resources:
+#         mem_mb = 16000,
+#         time = 1440 
+#     log: bids(root='logs', suffix = 'freesurfer.log',**inputs.subj_wildcards)
+#     shell: 
+#         """
+#         export
+#         recon-all -subjid sub-{wildcards.subject} -i {input.t1w_skstrip} -all -noskullstrip
+#         /fastsurfer/run_fastsurfer.sh --fs_license {input.fs_license} --sid sub-{wildcards.subject} --sd {params.fsdir} --t1 {input.t1w_skstrip} --seg_log {log.seg_log} &> {log.fastsurfer}
+#         touch {params.fsdir}/sub-{wildcards.subject}/mri/aseg.auto_noCCseg.label_intensities.txt
+#         touch {output.done}
+#         """
+
+# rule fastsurfer:
+#     input: 
+#         t1w_skstrip = rules.synthstrip.output.skstrip,
+#         fs_license = config ['fs_license']
+#     params:
+#         fsdir = bids(
+#             root = 'derivatives',
+#             suffix = 'freesurfer'
+#         ),
+#     output:
+#         done = bids(
+#             root = 'work',
+#             suffix = 'fastsurfer.done',
+#             **inputs.subj_wildcards
+#         ),
+#     container: config['singularity']['fastsurfer']
+#     group: 'subj'
+#     threads: 8
+#     resources:
+#         mem_mb = 16000,
+#         time = 1440 
+#     log: 
+#         fastsurfer = bids(root='logs', suffix = 'fastsurfer.log',**inputs.subj_wildcards),
+#         seg_log = bids(root='logs', suffix = 'deepseg.log',**inputs.subj_wildcards),
+#     shell: 
+#         """
+#         /fastsurfer/run_fastsurfer.sh --fs_license {input.fs_license} --sid sub-{wildcards.subject} --sd {params.fsdir} --t1 {input.t1w_skstrip} --seg_log {log.seg_log} &> {log.fastsurfer}
+#         touch {params.fsdir}/sub-{wildcards.subject}/mri/aseg.auto_noCCseg.label_intensities.txt
+#         touch {output.done}
+        # """
+
+rule symlinks:
+    input: 
+        sk_t1w = rules.synthstrip.output.skstrip
+    params:
+        grad_corr_dir = bids(
+            root = 'derivatives',
+            suffix = 'gradcorrect'
+        ),
+        fmriprep_in = bids(
+            root = 'derivatives',
+            suffix = 'fmriprep_in'
+        ),
+        symlink_script = join(workflow.basedir,'../workflow/scripts/fmriprep_input_symlink.sh'),
+    output: 
+        done = bids(
+            root = 'work',
+            suffix = 'symlink.done',
+            **inputs.subj_wildcards
+        ),
+    group: 'subj1'
+    log: bids(root='logs', suffix = 'symlinks.log', **inputs.subj_wildcards)
+    shell:
+        """
+        bash {params.symlink_script} {params.grad_corr_dir} {input.sk_t1w} {params.fmriprep_in} {wildcards.subject} &> {log}
+        touch {output.done}
+        """
+
+rule fmriprep:
+    input: 
+        sk_done = rules.symlinks.output.done,
+        fs_license = config['fs_license']
+    params:
+        fmriprep_in = bids(
+            root = 'derivatives',
+            suffix = 'fmriprep_in'
+        ),
+        fmriprep_dir = bids(
+            root = 'derivatives',
+            suffix = 'fmriprep'
+        ),
+        fs_dir = bids(
+            root = 'derivatives',
+            suffix = 'freesurfer'
+        )
+    output: 
+        done = bids(
+            root = 'work',
+            suffix = 'fmriprep.done',
+            **inputs.subj_wildcards
+        ),
+    container: config['singularity']['fmriprep']
+    group: 'subj2'
+    threads: 8
+    resources:
+        mem_mb = 16000,
+        time = 1440 
+    log: bids(root='logs', suffix = 'fmriprep.log',**inputs.subj_wildcards)
+    shell: 
+        """
+        fmriprep {params.fmriprep_in} {params.fmriprep_dir} participant --participant-label {wildcards.subject} --skip_bids_validation  --skull-strip-t1w auto --fs-license-file {input.fs_license} --cifti-output 91k &> {log}
+        touch {output.done}
+        """
+
+# rule aslprep:
+#     input: 
+#         fmriprep_done = rules.fmriprep.output.done,
+#         fs_license = config['fs_license']
+#     params:
+#         fmriprep_in = bids(
+#             root = 'derivatives',
+#             suffix = 'fmriprep_in'
+#         ),
+#         aslprep_dir = bids(
+#             root = 'derivatives',
+#             suffix = 'aslprep'
+#         ),
+#     output: 
+#         done = bids(
+#             root = 'work',
+#             suffix = 'aslprep.done',
+#             **inputs.subj_wildcards
+#         ),
+#     container: config['singularity']['aslprep']
+#     group: 'subj2'
+#     threads: 8
+#     resources:
+#         mem_mb = 16000,
+#         time = 1440 
+#     log: bids(root='logs', suffix = 'aslprep.log',**inputs.subj_wildcards)
+#     shell: 
+#         """
+#         aslprep {params.fmriprep_in} {params.aslprep_dir} participant --participant-label {wildcards.subject} --skip_bids_validation  --skull-strip-t1w auto --fs-license-file {input.fs_license} &> {log}
+#         touch {output.done}
+#         """
+
+# rule hippunfold:
+#     input: 
+#         symlink_done = rules.symlink.output.done
+#     params:
+#         fmriprep_in = bids(
+#             root = 'derivatives',
+#             suffix = 'fmriprep_in'
+#         ),
+#         hippunfold_out = bids(
+#             root = 'derivatives',
+#             suffix = 'hippunfold'
+#         )
+#     output:
+#         done = bids(
+#             root = 'work',
+#             suffix = 'hippunfold.done',
+#             **inputs.subj_wildcards
+#         ),
+#     container: config['singularity']['hippunfold']
+#     group: 'subj3'
+#     threads: 8
+#     resources:
+#         mem_mb = 16000,
+#         time = 180
+#     log: bids(root='logs', suffix = 'hippunfold.log',**inputs.subj_wildcards)
+#     shell:
+#         """
+#         hippunfold {params.fmriprep_in} {params.hippunfold_out} participant &> {log}
+#         touch {output.done}
 #         """
 
 rule all:
@@ -209,9 +395,24 @@ rule all:
         #     zip,
         #     **inputs.input_zip_lists['scans_tsv']
         # ),
+        # expand(
+        #     rules.synthstrip.output.mask,
+        #     zip,
+        #     **inputs.input_zip_lists['scans_tsv']
+        # ),
         expand(
-            rules.synthstrip.output.mask,
+            rules.fmriprep.output.done,
             zip,
             **inputs.input_zip_lists['scans_tsv']
-        )
+            ),
+        # expand(
+        #     rules.aslprep.output.done,
+        #     zip,
+        #     **inputs.input_zip_lists['scans_tsv']
+        #     ),
+        # expand(
+        #     rules.hippunfold.output.done,
+        #     zip,
+        #     **inputs.input_zip_lists['scans_tsv']
+        #     ),
     default_target: True
